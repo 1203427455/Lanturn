@@ -1,4 +1,5 @@
 import random
+from lanturn.ecs.component.battle import BattleComponent
 
 class Team(object):
     def __init__(self, size, lineups):
@@ -47,9 +48,9 @@ class Arena(object):
                     if move.target.health <= 0:
                         move.target.health = 0
                         active_pokemon.remove(move.target)
-                        move.source.opposing_team.active.remove(move.target)
+                        move.source[BattleComponent].opposing_team.active.remove(move.target)
                 else:
-                    available_targets = list(move.source.opposing_team.get_active())
+                    available_targets = list(move.source[BattleComponent].opposing_team.get_active())
                     if len(available_targets) > 0:
                         move.target = available_targets[random.randint(0, len(available_targets) - 1)]
                         move.execute()
