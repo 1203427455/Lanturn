@@ -9,6 +9,6 @@ class PlayerReplicationComponent(ReplicationComponent):
 	def get_replication_data(self):
 		return {
 			'id': self.entity.id,
-			'position': (self.entity.position[0], self.entity.position[1]),
+			'position': self.entity.get_position(),
 			'orientation': self.entity.orientation
 		}

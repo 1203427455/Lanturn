@@ -2,7 +2,9 @@ import json
 from lib.ecs.system_manager import SystemManager
 from lanturn.ecs.entity.player import Player
 from lanturn.ecs.system.replication import ReplicationSystem
+from lanturn.ecs.system.battle import BattleSystem
 from lanturn.ecs.message_types import MESSAGE_TYPE
+from lanturn.ecs.entity.pokemon import Pokemon
 
 class Game(object):
     LEVEL_DIMENSION = 10
@@ -13,8 +15,15 @@ class Game(object):
         self.zone = [[None for i in range(self.LEVEL_DIMENSION)] for j in range(self.LEVEL_DIMENSION)]
         self.system_manager = SystemManager.get_instance()
         self.system_manager.init([
-            ReplicationSystem()
+            ReplicationSystem(),
+            BattleSystem()
         ])
+
+    def get_message_handlers(self):
+        return {
+            'connect': self.connect,
+            'move': self.move,
+        }
 
     def get_free_position(self):
         for i in range(self.LEVEL_DIMENSION):
@@ -44,6 +53,7 @@ class Game(object):
             player_id = self.username_to_id[username]
 
         self.users[player_id].connection = connection
+        connection.player_id = player_id
 
         connection.sendMessage(json.dumps({
             'type': 'connect_response',
@@ -55,6 +65,19 @@ class Game(object):
             'connection': connection,
         })
 
+        self.system_manager.send_message({
+            'message_type': MESSAGE_TYPE.CREATE_BATTLE,
+            'team_a_settings': {'lineups': [self.users[player_id].lineup], 'size': 1},
+            'team_b_settings': {'lineups': [[Pokemon(None)]], 'size': 1},
+            'players': [self.users[player_id]]
+        })
+
+        self.system_manager.send_message({
+            'message_type': MESSAGE_TYPE.PLAYER_BATTLE_MOVE,
+            'pokemon': self.users[player_id].lineup[0],
+            'player': self.users[player_id]
+        })
+
         return player_id
 
     def move(self, message):
@@ -62,6 +85,9 @@ class Game(object):
         player_id = message.player_id
 
         new_x, new_y = data['position']
+        old_x, old_y = self.users[player_id].x, self.users[player_id].y
+        orientation = data['orientation']
+        self.users[player_id].orientation = orientation
 
         if new_x >= self.LEVEL_DIMENSION or new_y >= self.LEVEL_DIMENSION or self.zone[new_x][new_y]:
             # Position is already occupied or is invalid
@@ -69,8 +95,6 @@ class Game(object):
                 'type': 'invalid_move',
             }))
         else:
-            old_position = self.users[player_id].position
-            old_x, old_y = old_position[0], old_position[1]
             self.zone[old_x][old_y] = None
             self.zone[new_x][new_y] = True
             self.users[player_id].move(new_x, new_y)

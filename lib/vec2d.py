@@ -351,6 +351,9 @@ class Vec2d(object):
 
     def copy(self):
         return Vec2d(self.x, self.y)
+
+    def tuple(self):
+        return (self.x, self.y)
  
 ########################################################################
 ## Unit Testing                                                       ##

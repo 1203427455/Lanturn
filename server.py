@@ -1,9 +1,9 @@
 import json
 import sys
 from twisted.python import log
+from twisted.internet import task
 from twisted.internet import reactor
 from autobahn.twisted.websocket import WebSocketServerProtocol, WebSocketServerFactory
-from twisted.internet import task
 from lanturn.game import Game
 
 class Message(object):
@@ -17,15 +17,10 @@ class Server(WebSocketServerFactory):
     def __init__(self, *args, **kwargs):
         super(Server, self).__init__(*args, **kwargs)
         self.game = Game()
-
-        self.message_handlers = {
-            'connect': self.game.connect,
-            'move': self.game.move
-        }
-
+        self.message_handlers = self.game.get_message_handlers()
         task.LoopingCall(self.game.update, 1/5.0).start(1/5.0)
 
-    def handle_message(self, message):
+    def handle_message(self, message):  
         handler = self.message_handlers.get(message.type)
         if handler is None:
             print 'Could not find handler for type: <{}>'.format(message.type)
@@ -49,9 +44,7 @@ class MyServerProtocol(WebSocketServerProtocol):
             self
         )
         
-        handler_result = self.factory.handle_message(message)
-        if message.type == 'connect':
-            self.player_id = handler_result
+        self.factory.handle_message(message)
 
     def onClose(self, wasClean, code, reason):
         print("WebSocket connection closed: {0}".format(reason))

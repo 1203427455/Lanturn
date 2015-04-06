@@ -17,7 +17,8 @@ class MyClientProtocol(WebSocketClientProtocol):
         def hello(offset=0):
             self.sendMessage(json.dumps({
                 'type': 'move',
-                'position': (offset, 0)
+                'position': (offset, 0),
+                'orientation': 0
             }))
             self.factory.reactor.callLater(1, hello, offset+1)
 
