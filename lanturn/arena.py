@@ -41,7 +41,7 @@ class Arena(object):
         # TODO: sort by move priority + pokemon speed
 
         for move in moves:
-            if move.source in active_pokemon
+            if move.source in active_pokemon:
                 if move.target in active_pokemon:
                     move.execute()
                     if move.target.health <= 0:
