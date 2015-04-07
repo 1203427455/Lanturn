@@ -18,7 +18,7 @@ class Server(WebSocketServerFactory):
         super(Server, self).__init__(*args, **kwargs)
         self.game = Game()
         self.message_handlers = self.game.get_message_handlers()
-        task.LoopingCall(self.game.update, 1/5.0).start(1/5.0)
+        task.LoopingCall(self.game.update, 1/2.0).start(1/2.0)
 
     def handle_message(self, message):  
         handler = self.message_handlers.get(message.type)
@@ -35,7 +35,7 @@ class MyServerProtocol(WebSocketServerProtocol):
         self.player_id = None
 
     def onConnect(self, request):
-        print("Client connecting: {0}".format(request.peer))
+        print 'Client connecting: {0}'.format(request.peer)
 
     def onMessage(self, payload, isBinary):
         message = Message(
@@ -43,21 +43,16 @@ class MyServerProtocol(WebSocketServerProtocol):
             self.player_id,
             self
         )
-        
+
         self.factory.handle_message(message)
 
     def onClose(self, wasClean, code, reason):
-        print("WebSocket connection closed: {0}".format(reason))
-
-def runEverySecond(connection, string):
-    connection.sendMessage(string, False)
+        print 'WebSocket connection closed: {}'.format(reason)
 
 if __name__ == '__main__':
-    task.LoopingCall(runEverySecond)
-
     # log.startLogging(sys.stdout)
 
-    factory = Server("ws://0.0.0.0:9000", debug=False)
+    factory = Server('ws://0.0.0.0:9000', debug=False)
     factory.protocol = MyServerProtocol
 
     reactor.listenTCP(9000, factory)
