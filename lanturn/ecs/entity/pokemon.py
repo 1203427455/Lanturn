@@ -9,3 +9,6 @@ class Pokemon(Entity):
         self.type = 0
         self.health = 100
         self.owner = owner
+
+    def __str__(self):
+    	return '<Pokemon {}>'.format(self.id)

@@ -27,6 +27,9 @@ class Player(Entity):
             'entity': self
         })
 
+    def __str__(self):
+        return '<Player {}>'.format(self.id)
+
     def move(self, x, y):
         self.x, self.y = x, y
 
