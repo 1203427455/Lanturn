@@ -1,15 +1,8 @@
-import random
 from collections import defaultdict
-from lib.ecs.system.system import System
-from lanturn.ecs.message_types import MESSAGE_TYPE
-from lanturn.battle.arena import Arena, Team, Move
 from lanturn.ecs.component.battle import BattleComponent
-
-class BattleAI(object):
-    def generate_move(self, pokemon):
-        foes = list(pokemon[BattleComponent].opposing_team.get_active())
-        target = foes[random.randint(0, len(foes)-1)]    
-        return Move(pokemon, target)
+from lanturn.battle.arena import Arena
+from lanturn.battle.ai import BattleAI
+from lanturn.battle.team import Team
 
 class FaintSubstituteBattleState(object):
     def __init__(self, battle):
@@ -30,7 +23,7 @@ class FaintSubstituteBattleState(object):
                 len(pokemon[BattleComponent].team.pokemon_to_lineup[pokemon].healthy_pokemon)
             )
 
-        self.total_pokemon_to_substitute = sum(self.num_required_substitutes.values())
+        return sum(self.num_required_substitutes.values()) > 0
 
     def accept_move(self, player, move):
         if move.type != 0:
@@ -38,11 +31,6 @@ class FaintSubstituteBattleState(object):
             return self
 
         pokemon = move.source
-
-        # Verify that the pokemon is part of the player's lineup
-        if pokemon not in pokemon[BattleComponent].team.player_to_lineup[player].pokemon():
-            print 'Pokemon not part of the owner\'s lineup'
-            return self
 
         # Verify that the pokemon is not already in the active set
         if pokemon in pokemon[BattleComponent].team.active:
@@ -63,7 +51,9 @@ class FaintSubstituteBattleState(object):
             return self
 
         for player, pokemon in self.substitute_selection.items():
-            print '{} selected {} for substitution'.format(player, ', '.join(map(lambda x: str(x), pokemon)))
+            print '{} selected {} for substitution'.format(
+                player, ', '.join(map(lambda x: str(x), pokemon))
+            )
 
         # TODO: Inform players of substitutions
 
@@ -122,7 +112,11 @@ class CombatBattleState(object):
             if team.has_substitute(pokemon):
                 if pokemon.owner is None:
                     pass
-                    # AI select a substitute
+                    # TODO: AI select a substitute
+
+                # For the player case, the client is expected
+                # to know to send a substitution message to
+                # the server
             else:
                 print 'NO SUBSTITUTE AVAILABLE'
                 if team.is_defeated():
@@ -130,8 +124,8 @@ class CombatBattleState(object):
 
         player_owned_fainted_pokemon = [pokemon for pokemon in fainted_pokemon if pokemon.owner]
         if player_owned_fainted_pokemon:
-            self.battle.battle_states['faint'].setup(player_owned_fainted_pokemon)
-            return self.battle.battle_states['faint']
+            if self.battle.battle_states['faint'].setup(player_owned_fainted_pokemon):
+                return self.battle.battle_states['faint']
 
         # TODO: send information to players
 
@@ -142,14 +136,14 @@ class CombatBattleState(object):
 class Battle(object):
     def __init__(self, team_a_settings, team_b_settings, players):
         self.players = players
-        team_a = self._setup_team(team_a_settings)
-        team_b = self._setup_team(team_b_settings)
-        self._setup_battle_components(team_a, team_b)
-        self._setup_battle_components(team_b, team_a)
+        self.team_a = self._setup_team(team_a_settings)
+        self.team_b = self._setup_team(team_b_settings)
+        self._setup_battle_components(self.team_a, self.team_b)
+        self._setup_battle_components(self.team_b, self.team_a)
 
         self.battle_states = {
             'faint': FaintSubstituteBattleState(self),
-            'combat': CombatBattleState(self, team_a, team_b, players)
+            'combat': CombatBattleState(self, self.team_a, self.team_b, players)
         }
         self.battle_state = self.battle_states['combat']
 
@@ -165,4 +159,10 @@ class Battle(object):
                 pokemon.add_component(BattleComponent(pokemon, team, opposing_team))
 
     def accept_move(self, player, move):
+        # Verify that the pokemon is part of the player's lineup
+        pokemon = move.source
+        if pokemon not in pokemon[BattleComponent].team.player_to_lineup[player].pokemon():
+            print 'Pokemon not part of the owner\'s lineup'
+            return
+
         self.battle_state = self.battle_state.accept_move(player, move)

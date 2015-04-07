@@ -1,4 +1,3 @@
-from collections import defaultdict
 from lib.ecs.system.system import System
 from lanturn.ecs.message_types import MESSAGE_TYPE
 from lanturn.battle.battle import Battle, BattleAI
